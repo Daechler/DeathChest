@@ -1,0 +1,6 @@
+name: DeathChest
+version: '${project.version}'
+main: net.daechler.deathchest.DeathChest
+api-version: 1.19
+authors: [ Daechler ]
+description: This plugin spawns a chest at the place where a player dies, with his items inside.
