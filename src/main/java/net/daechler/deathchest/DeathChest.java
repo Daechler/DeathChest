@@ -25,6 +25,20 @@ public class DeathChest extends JavaPlugin implements Listener {
         Player player = event.getEntity();
         Location deathLocation = player.getLocation();
 
+        // Check if the player has anything in their inventory
+        boolean hasContents = false;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() != Material.AIR) {
+                hasContents = true;
+                break;
+            }
+        }
+
+        if (!hasContents) {
+            // Player has no items, do not spawn chest
+            return;
+        }
+
         deathLocation.getBlock().setType(Material.CHEST);
         Chest chest = (Chest) deathLocation.getBlock().getState();
         Inventory deathChest = chest.getBlockInventory();
