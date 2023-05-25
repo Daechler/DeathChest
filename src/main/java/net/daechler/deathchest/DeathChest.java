@@ -4,58 +4,70 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Chest;
+import org.bukkit.block.Block;
+import org.bukkit.block.Skull;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.HashMap;
+
 public class DeathChest extends JavaPlugin implements Listener {
+    private HashMap<String, Inventory> graveInventories;
 
     @Override
     public void onEnable() {
-        Bukkit.getServer().getPluginManager().registerEvents(this, this);
+        getServer().getConsoleSender().sendMessage(ChatColor.GREEN + "DeathChest has been enabled!");
+        getServer().getPluginManager().registerEvents(this, this);
+        graveInventories = new HashMap<>();
     }
 
+    @Override
+    public void onDisable() {
+        getServer().getConsoleSender().sendMessage(ChatColor.RED + "DeathChest has been disabled!");
+    }
+
+    // When player dies, store items in the skull.
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        Location deathLocation = player.getLocation();
+        Block block = player.getWorld().getBlockAt(player.getLocation());
+        block.setType(Material.PLAYER_HEAD);
 
-        // Check if the player has anything in their inventory
-        boolean hasContents = false;
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() != Material.AIR) {
-                hasContents = true;
-                break;
-            }
+        Skull skull = (Skull) block.getState();
+        skull.setOwningPlayer(player);
+        skull.update();
+
+        Inventory graveInventory = Bukkit.createInventory(null, 54, "Grave");
+        for(ItemStack item : event.getDrops()) {
+            graveInventory.addItem(item);
         }
-
-        if (!hasContents) {
-            // Player has no items, do not spawn chest
-            return;
-        }
-
-        deathLocation.getBlock().setType(Material.CHEST);
-        Chest chest = (Chest) deathLocation.getBlock().getState();
-        Inventory deathChest = chest.getBlockInventory();
-
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() != Material.AIR) {
-                deathChest.addItem(item);
-            }
-        }
-
         event.getDrops().clear();
 
-        int x = deathLocation.getBlockX();
-        int y = deathLocation.getBlockY();
-        int z = deathLocation.getBlockZ();
+        graveInventories.put(block.getLocation().toString(), graveInventory);
+    }
 
-        player.sendMessage(ChatColor.RED + "Your items have been added to a death chest at your death location " +
-                "(" + x + ", " + y + ", " + z + ").");
+    // When player interacts with the skull, open the inventory.
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return; // Only handle right click (interact) action
+
+        Block block = event.getClickedBlock();
+        if (block != null && block.getType() == Material.PLAYER_HEAD) {
+            Player player = event.getPlayer();
+            Skull skull = (Skull) block.getState();
+            if(skull.getOwningPlayer().getUniqueId().equals(player.getUniqueId())) {
+                Inventory graveInventory = graveInventories.get(block.getLocation().toString());
+                if (graveInventory != null) {
+                    player.openInventory(graveInventory);
+                }
+            }
+        }
     }
 }
