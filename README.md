@@ -1,2 +1,2 @@
 # DeathChest
-This plugin spawns a chest at the place where a player dies, with his items inside. 
+Protect your items upon your death in a grave.
