@@ -3,4 +3,4 @@ version: '${project.version}'
 main: net.daechler.deathchest.DeathChest
 api-version: 1.19
 authors: [Daechler]
-description: Put your items in a chest when you die.
+description: Protect your items upon your death in a grave.
