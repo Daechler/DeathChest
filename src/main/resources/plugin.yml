@@ -7,3 +7,6 @@ description: Protect your items upon your death in a grave.
 commands:
   grave:
     description: Teleport to your last grave.
+    aliases: [graves, deathchest, chest, death]
+    usage: /grave
+    permission: deathchest.teleport
