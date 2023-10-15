@@ -5,7 +5,10 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -21,25 +24,27 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.HashMap;
 
 public class DeathChest extends JavaPlugin implements Listener {
+    private HashMap<String, Location> playerGraves;
     private HashMap<Location, Inventory> graveInventories;
 
     @Override
     public void onEnable() {
-        getServer().getConsoleSender().sendMessage(ChatColor.GREEN + "DeathChest has been enabled!");
+        getLogger().info("DeathChest has been enabled!");
         getServer().getPluginManager().registerEvents(this, this);
         graveInventories = new HashMap<>();
+        playerGraves = new HashMap<>();
     }
 
     @Override
     public void onDisable() {
-        getServer().getConsoleSender().sendMessage(ChatColor.RED + "DeathChest has been disabled!");
+        getLogger().info("DeathChest has been disabled!");
     }
 
-    // When player dies, store items in the skull.
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        Block block = player.getWorld().getBlockAt(player.getLocation());
+        Location deathLocation = player.getLocation();
+        Block block = findNearestAirBlock(deathLocation);
         block.setType(Material.PLAYER_HEAD);
 
         Skull skull = (Skull) block.getState();
@@ -52,13 +57,23 @@ public class DeathChest extends JavaPlugin implements Listener {
         }
         event.getDrops().clear();
 
-        graveInventories.put(block.getLocation(), graveInventory);
+        Location graveLocation = block.getLocation();
+        graveInventories.put(graveLocation, graveInventory);
+        playerGraves.put(player.getName(), graveLocation);
     }
 
-    // When player interacts with the skull, open the inventory.
+    private Block findNearestAirBlock(Location location) {
+        Block block = location.getBlock();
+        while (block.getType() != Material.AIR && block.getY() < 256) {
+            block = block.getRelative(BlockFace.UP);
+        }
+        return block;
+    }
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return; // Only handle right click (interact) action
+        getLogger().info("PlayerInteractEvent triggered");
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         Block block = event.getClickedBlock();
         if (block != null && block.getType() == Material.PLAYER_HEAD) {
@@ -73,9 +88,9 @@ public class DeathChest extends JavaPlugin implements Listener {
         }
     }
 
-    // When player closes the inventory, check if it is empty, if so, remove the grave and hashmap entry
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
+        getLogger().info("InventoryCloseEvent triggered");
         Inventory closedInventory = event.getInventory();
         Location graveLocation = null;
 
@@ -95,9 +110,9 @@ public class DeathChest extends JavaPlugin implements Listener {
         }
     }
 
-    // When player breaks a block, check if it is a grave. If so, drop the items, remove the hashmap entry, and cancel the event.
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+        getLogger().info("BlockBreakEvent triggered");
         Block block = event.getBlock();
         Location blockLocation = block.getLocation();
 
@@ -109,11 +124,10 @@ public class DeathChest extends JavaPlugin implements Listener {
                 }
             }
             graveInventories.remove(blockLocation);
-            event.setDropItems(false);  // Prevent the block from dropping items when it's broken
+            event.setDropItems(false);
         }
     }
 
-    // Helper function to check if an inventory is empty
     private boolean isInventoryEmpty(Inventory inv) {
         for (ItemStack is : inv.getContents()) {
             if (is != null)
@@ -121,5 +135,24 @@ public class DeathChest extends JavaPlugin implements Listener {
         }
         return true;
     }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        getLogger().info("Command received");
+        if (command.getName().equalsIgnoreCase("grave") && sender instanceof Player) {
+            Player player = (Player) sender;
+            Location grave = playerGraves.get(player.getName());
+            if (grave != null) {
+                Location tpLocation = grave.clone().add(0.5, 1, 0.5); // Adding 0.5 to x and z to center player, 1 to y to place the player on top of the grave.
+                tpLocation.setPitch(player.getLocation().getPitch());
+                tpLocation.setYaw(player.getLocation().getYaw());
+                player.teleport(tpLocation);
+                player.sendMessage(ChatColor.GREEN + "You have been teleported to your grave.");
+            } else {
+                player.sendMessage(ChatColor.RED + "No grave found to teleport to.");
+            }
+            return true;
+        }
+        return false;
+    }
 }
-w
