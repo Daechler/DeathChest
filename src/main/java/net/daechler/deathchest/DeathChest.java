@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.event.entity.EntityExplodeEvent;
 
 import java.util.HashMap;
 
@@ -84,6 +85,20 @@ public class DeathChest extends JavaPlugin implements Listener {
                 if (graveInventory != null) {
                     player.openInventory(graveInventory);
                 }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntityExplode(EntityExplodeEvent event) {
+        // Iterate through the list of blocks that were affected by the explosion
+        for (int i = 0; i < event.blockList().size(); i++) {
+            Block block = event.blockList().get(i);
+
+            // Check if the exploded block is a player's grave
+            if (block.getType() == Material.PLAYER_HEAD && graveInventories.containsKey(block.getLocation())) {
+                // Prevent the explosion from affecting this specific block
+                event.blockList().remove(i--); // Decrease i because we just removed an element from the list
             }
         }
     }
