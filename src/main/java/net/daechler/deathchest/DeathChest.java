@@ -17,6 +17,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -80,14 +81,89 @@ public class DeathChest extends JavaPlugin implements Listener {
         if (block != null && block.getType() == Material.PLAYER_HEAD) {
             Player player = event.getPlayer();
             Skull skull = (Skull) block.getState();
-            if(skull.getOwningPlayer().getUniqueId().equals(player.getUniqueId())) {
-                Inventory graveInventory = graveInventories.get(block.getLocation());
-                if (graveInventory != null) {
-                    player.openInventory(graveInventory);
+
+            if (skull.getOwningPlayer() != null && skull.getOwningPlayer().getUniqueId().equals(player.getUniqueId())) {
+                if (player.isSneaking()) {  // Check if player is sneaking
+                    Inventory graveInventory = graveInventories.get(block.getLocation());
+                    if (graveInventory != null) {
+                        // Loop through the items in the grave
+                        for (ItemStack item : graveInventory.getContents()) {
+                            if (item != null) {
+                                // Check if the item is armor and can be equipped
+                                switch (item.getType()) {
+                                    case NETHERITE_HELMET:
+                                    case DIAMOND_HELMET:
+                                    case GOLDEN_HELMET:
+                                    case IRON_HELMET:
+                                    case CHAINMAIL_HELMET:
+                                    case LEATHER_HELMET:
+                                        equipIfSlotEmpty(player, item, EquipmentSlot.HEAD);
+                                        break;
+                                    case NETHERITE_CHESTPLATE:
+                                    case DIAMOND_CHESTPLATE:
+                                    case GOLDEN_CHESTPLATE:
+                                    case IRON_CHESTPLATE:
+                                    case CHAINMAIL_CHESTPLATE:
+                                    case LEATHER_CHESTPLATE:
+                                        equipIfSlotEmpty(player, item, EquipmentSlot.CHEST);
+                                        break;
+                                    case NETHERITE_LEGGINGS:
+                                    case DIAMOND_LEGGINGS:
+                                    case GOLDEN_LEGGINGS:
+                                    case IRON_LEGGINGS:
+                                    case CHAINMAIL_LEGGINGS:
+                                    case LEATHER_LEGGINGS:
+                                        equipIfSlotEmpty(player, item, EquipmentSlot.LEGS);
+                                        break;
+                                    case NETHERITE_BOOTS:
+                                    case DIAMOND_BOOTS:
+                                    case GOLDEN_BOOTS:
+                                    case IRON_BOOTS:
+                                    case CHAINMAIL_BOOTS:
+                                    case LEATHER_BOOTS:
+                                        equipIfSlotEmpty(player, item, EquipmentSlot.FEET);
+                                        break;
+                                    default:
+                                        // If not armor, or armor slots are filled, try to add to the inventory
+                                        HashMap<Integer, ItemStack> noSpaceFor = player.getInventory().addItem(item);
+                                        if (!noSpaceFor.isEmpty()) {
+                                            // If the player's inventory is full, leave the rest in the grave
+                                            return;
+                                        }
+                                        break;
+                                }
+                                graveInventory.remove(item); // Remove the item from the grave inventory
+                            }
+                        }
+
+                        // Check if the grave inventory is empty, if so, remove the grave
+                        if (isInventoryEmpty(graveInventory)) {
+                            block.setType(Material.AIR);
+                            graveInventories.remove(block.getLocation());
+                        }
+                    }
+                } else {
+                    // If the player is not sneaking, they are just viewing the grave's inventory
+                    Inventory graveInventory = graveInventories.get(block.getLocation());
+                    if (graveInventory != null) {
+                        player.openInventory(graveInventory);
+                    }
                 }
             }
         }
     }
+
+    private void equipIfSlotEmpty(Player player, ItemStack item, EquipmentSlot slot) {
+        ItemStack currentItem = player.getEquipment().getItem(slot);
+
+        if (currentItem == null || currentItem.getType() == Material.AIR) {
+            player.getEquipment().setItem(slot, item);
+        } else {
+            // If the slot is occupied, add the item to the player's inventory
+            player.getInventory().addItem(item);
+        }
+    }
+
 
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
